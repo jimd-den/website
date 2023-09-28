@@ -6,7 +6,7 @@ use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, body};
 
 use actix_files::Files;
 
-use website::domains::entities::case_file::CaseFileEntity;
+use website::{domains::{entities::case_file::CaseFileEntity, usecases::casefileusecase::CaseFileUseCase}, interfaces::repositories::casefilerepository_mem::InMemoryCaseFileRepository, controllers::casefilecontroller::CaseFileController};
 
 
 
@@ -36,9 +36,11 @@ async fn bldhnd_intro() -> impl Responder {
 
 async fn main() -> std::io::Result<()> {
 
-    let crime = CaseFileEntity {
+    let casefile = CaseFileEntity {
 
         case_number: 0,
+
+        title: "Hi".to_string(),
 
         datetime: 0,
 
@@ -46,7 +48,19 @@ async fn main() -> std::io::Result<()> {
 
     };
 
-    dbg!(crime);
+    let use_case: Box<dyn CaseFileUseCase> = InMemoryCaseFileRepository::new();
+
+    let controller = CaseFileController::new(use_case);
+
+    match controller.create(casefile) {
+
+        Ok(case_file) => println!("Case file created: {:?}", case_file),
+
+        Err(e) => println!("Error creating case_file {}", e),
+
+        }
+
+
 
     let path = "./static";
 
@@ -116,15 +130,17 @@ impl CaseFileController {
 
     }
 
-    pub fn create(&self, input: CreateCaseFileInput) -> Result<CaseFileEntity, Box<dyn Error>> {
+    pub fn create(&self, case_file: CaseFileEntity) -> Result<CaseFileEntity, Box<dyn Error>> {
 
-        let title = input.title;
+        let title = case_file.title;
 
-        let datetime = input.datetime;
+        let datetime = case_file.datetime;
+
+
 
         
 
-        self.use_case.create_case_file(title,datetime)
+        self.use_case.create_case_file(title, datetime)
 
     }
 
@@ -158,6 +174,8 @@ pub struct CaseFileEntity {
 
     pub case_number: u32,
 
+    pub title: String,
+
     pub datetime: u64,
 
     pub evidence: Vec<u32>,
@@ -168,11 +186,13 @@ pub struct CaseFileEntity {
 
 impl CaseFileEntity {
 
-    pub fn new(case_number: u32, datetime: u64, evidence: Vec<u32>) -> Self {
+    pub fn new(case_number: u32, title: String, datetime: u64, evidence: Vec<u32>) -> Self {
 
         Self {
 
             case_number,
+
+            title,
 
             datetime,
 
@@ -204,7 +224,7 @@ pub trait CaseFileUseCase {
 
         datetime: u64,
 
-    ) -> Result<CaseFileEntity, Box<dyn Error>>;
+    ) -> Result<(CaseFileEntity), Box<dyn Error>>;
 
     fn get_case_file(&self, case_number: u32) -> Result<CaseFileEntity, Box<dyn Error>>;
 
@@ -228,13 +248,65 @@ pub mod entities;
 
 pub mod usecases;----------
 
+src/application/mod.rs
+
+pub mod services;----------
+
+src/application/services/mod.rs
+
+pub mod casefileservice;----------
+
+src/application/services/casefileservice.rs
+
+use crate::{interfaces::repositories::casefilerepository::CaseFileRepository, domains::usecases::casefileusecase::CaseFileUseCase};
+
+
+
+pub struct CaseFileService{
+
+    repository: Box<dyn CaseFileRepository>,
+
+    create_use_case: Box<dyn CaseFileUseCase>
+
+}
+
+
+
+impl CaseFileService {
+
+    pub fn new(repository: Box<dyn CaseFileRepository>, create_use_case: Box<dyn CaseFileUseCase>) -> Self {
+
+        Self {
+
+            repository,
+
+            create_use_case
+
+        }
+
+    }
+
+
+
+    pub async fn create_case_file() {
+
+
+
+    }
+
+
+
+}----------
+
 src/lib.rs
 
 pub mod controllers;
 
 pub mod domains;
 
-pub mod interfaces;----------
+pub mod interfaces;
+
+pub mod application;----------
 
 src/interfaces/mod.rs
 
@@ -268,7 +340,7 @@ use std::collections::HashMap;
 
 
 
-use crate::domains::entities::case_file::CaseFileEntity;
+use crate::domains::{entities::case_file::CaseFileEntity, usecases::casefileusecase::CaseFileUseCase};
 
 
 
@@ -286,13 +358,57 @@ pub struct InMemoryCaseFileRepository {
 
 impl InMemoryCaseFileRepository {
 
-    pub fn new() -> Box<Self> {
+    pub fn new() -> Box<dyn CaseFileUseCase> {
 
         Box::new(InMemoryCaseFileRepository {
 
             case_files: HashMap::new(),
 
         })
+
+    }
+
+}
+
+impl CaseFileUseCase for InMemoryCaseFileRepository {
+
+    fn create_case_file(
+
+            &self,
+
+            title: String,
+
+            datetime: u64,
+
+        ) -> Result<CaseFileEntity, Box<dyn std::error::Error>> {
+
+        let case_file = CaseFileEntity::new(0,title, datetime,Vec::new());
+
+        Ok(case_file)
+
+    }
+
+
+
+    fn get_case_file(&self, case_number: u32) -> Result<CaseFileEntity, Box<dyn std::error::Error>> {
+
+        todo!()
+
+    }
+
+
+
+    fn add_evidence(&self, case_number: u32, evidence_id: u64) -> Result<(), Box<dyn std::error::Error>> {
+
+        todo!()
+
+    }
+
+
+
+    fn add_note(&self, case_number: u32, note_id: u64) -> Result<(), Box<dyn std::error::Error>> {
+
+        todo!()
 
     }
 
