@@ -1,6 +1,6 @@
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, body};
 use actix_files::Files;
-use website::entities::case_file::CaseFileEntity;
+use website::domains::entities::case_file::CaseFileEntity;
 
 #[get("/")]
 async fn hello() -> impl Responder {

@@ -1,2 +1,1 @@
-pub mod casefilerepository;
-pub mod casefilerepository_mem;
+pub mod repositories;

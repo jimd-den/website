@@ -1,3 +1,3 @@
-pub mod entities;
-pub mod usecases;
+pub mod controllers;
+pub mod domains;
 pub mod interfaces;

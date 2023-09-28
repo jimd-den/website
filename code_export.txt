@@ -1,0 +1,332 @@
+----------
+
+src/main.rs
+
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, body};
+
+use actix_files::Files;
+
+use website::domains::entities::case_file::CaseFileEntity;
+
+
+
+#[get("/")]
+
+async fn hello() -> impl Responder {
+
+    HttpResponse::Ok().body("Hello World")
+
+}
+
+
+
+async fn bldhnd_intro() -> impl Responder {
+
+    "intro"
+
+    
+
+}
+
+
+
+#[actix_web::main]
+
+
+
+async fn main() -> std::io::Result<()> {
+
+    let crime = CaseFileEntity {
+
+        case_number: 0,
+
+        datetime: 0,
+
+        evidence: Vec::new(),
+
+    };
+
+    dbg!(crime);
+
+    let path = "./static";
+
+    let abs_path = std::fs::canonicalize(&path).unwrap();
+
+    dbg!(abs_path);
+
+    HttpServer::new(|| {
+
+        App::new()
+
+            .service(Files::new("/", "./static"))
+
+            .service(
+
+                web::scope("/bloodhound")
+
+                .route("/intro", web::get().to(bldhnd_intro)),
+
+            )
+
+        })
+
+    .bind(("127.0.0.1",8080))?
+
+    .run()
+
+    .await
+
+}----------
+
+src/controllers/mod.rs
+
+pub mod casefilecontroller;
+
+pub mod models;----------
+
+src/controllers/casefilecontroller.rs
+
+use std::error::Error;
+
+
+
+use crate::domains::usecases::casefileusecase::CaseFileUseCase;
+
+use crate::domains::entities::case_file::CaseFileEntity;
+
+
+
+use super::models::CreateCaseFileInput;
+
+
+
+pub struct CaseFileController {
+
+    use_case: Box<dyn CaseFileUseCase>,
+
+}
+
+
+
+impl CaseFileController {
+
+    pub fn new(use_case: Box<dyn CaseFileUseCase>) -> Self {
+
+        Self { use_case }
+
+    }
+
+    pub fn create(&self, input: CreateCaseFileInput) -> Result<CaseFileEntity, Box<dyn Error>> {
+
+        let title = input.title;
+
+        let datetime = input.datetime;
+
+        
+
+        self.use_case.create_case_file(title,datetime)
+
+    }
+
+}----------
+
+src/controllers/models.rs
+
+pub struct CreateCaseFileInput {
+
+    pub title: String,
+
+    pub datetime: u64,
+
+}----------
+
+src/domains/entities/mod.rs
+
+pub mod case_file;
+
+----------
+
+src/domains/entities/case_file.rs
+
+#[derive(Debug, Clone)]
+
+//The CaseFileEntity is how we hold evidence and notes for each case
+
+
+
+pub struct CaseFileEntity {
+
+    pub case_number: u32,
+
+    pub datetime: u64,
+
+    pub evidence: Vec<u32>,
+
+}
+
+
+
+impl CaseFileEntity {
+
+    pub fn new(case_number: u32, datetime: u64, evidence: Vec<u32>) -> Self {
+
+        Self {
+
+            case_number,
+
+            datetime,
+
+            evidence,
+
+        }
+
+    }
+
+}
+
+----------
+
+src/domains/usecases/casefileusecase.rs
+
+use crate::domains::entities::case_file::CaseFileEntity;
+
+use std::error::Error;
+
+
+
+pub trait CaseFileUseCase {
+
+    fn create_case_file(
+
+        &self,
+
+        title: String,
+
+        datetime: u64,
+
+    ) -> Result<CaseFileEntity, Box<dyn Error>>;
+
+    fn get_case_file(&self, case_number: u32) -> Result<CaseFileEntity, Box<dyn Error>>;
+
+    fn add_evidence(&self, case_number: u32, evidence_id: u64) -> Result<(), Box<dyn Error>>;
+
+    fn add_note(&self, case_number: u32, note_id: u64) -> Result<(), Box<dyn Error>>;
+
+}
+
+----------
+
+src/domains/usecases/mod.rs
+
+pub mod casefileusecase;
+
+----------
+
+src/domains/mod.rs
+
+pub mod entities;
+
+pub mod usecases;----------
+
+src/lib.rs
+
+pub mod controllers;
+
+pub mod domains;
+
+pub mod interfaces;----------
+
+src/interfaces/mod.rs
+
+pub mod repositories;----------
+
+src/interfaces/repositories/casefilerepository.rs
+
+use crate::domains::entities::case_file::CaseFileEntity;
+
+use std::error::Error;
+
+pub trait CaseFileRepository {
+
+    fn save_case_file(&mut self, case_file: CaseFileEntity) -> Result<(), Box<dyn Error>>;
+
+    fn get_case_file_by_id(&self, id: u32) -> Result<Option<CaseFileEntity>, Box<dyn Error>>;
+
+}
+
+----------
+
+src/interfaces/repositories/mod.rs
+
+pub mod casefilerepository;
+
+pub mod casefilerepository_mem;----------
+
+src/interfaces/repositories/casefilerepository_mem.rs
+
+use std::collections::HashMap;
+
+
+
+use crate::domains::entities::case_file::CaseFileEntity;
+
+
+
+use super::casefilerepository::CaseFileRepository;
+
+
+
+pub struct InMemoryCaseFileRepository {
+
+    case_files: HashMap<u32, CaseFileEntity>,
+
+}
+
+
+
+impl InMemoryCaseFileRepository {
+
+    pub fn new() -> Box<Self> {
+
+        Box::new(InMemoryCaseFileRepository {
+
+            case_files: HashMap::new(),
+
+        })
+
+    }
+
+}
+
+
+
+impl CaseFileRepository for InMemoryCaseFileRepository {
+
+    fn get_case_file_by_id(
+
+        &self,
+
+        id: u32,
+
+    ) -> Result<Option<CaseFileEntity>, Box<dyn std::error::Error>> {
+
+        Ok(self.case_files.get(&id).cloned())
+
+    }
+
+    fn save_case_file(
+
+        &mut self,
+
+        case_file: CaseFileEntity,
+
+    ) -> Result<(), Box<dyn std::error::Error>> {
+
+        self.case_files.insert(case_file.case_number, case_file);
+
+        Ok(())
+
+    }
+
+}
+
