@@ -1,5 +1,5 @@
-#[derive(Debug, Clone)]
-//The CaseFileEntity is how we hold evidence and notes for each case
+#[derive(Debug, Clone, Default)]
+//The CaseFileEntity is how we hold evidence and notes for each case, the evidence and notes
 
 pub struct CaseFileEntity {
     pub case_number: u32,
